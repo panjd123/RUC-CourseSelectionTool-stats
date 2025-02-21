@@ -40,8 +40,8 @@ class Report(BaseModel):
 
 @app.get("/success_report")
 async def report_success(count: int, uuid: str | None = None, request: Request = None):
-    if uuid is None:
-        uuid = "00-00-00-00-00-00"
+    if not uuid:
+        uuid = "Unknown"
     timestamp = request.headers.get("X-Timestamp", datetime.now().isoformat())
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -56,8 +56,8 @@ async def report_success(count: int, uuid: str | None = None, request: Request =
 
 @app.get("/request_report")
 async def report_request(count: int, uuid: str | None = None, request: Request = None):
-    if uuid is None:
-        uuid = "00-00-00-00-00-00"
+    if not uuid:
+        uuid = "Unknown"
     timestamp = request.headers.get("X-Timestamp", datetime.now().isoformat())
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
