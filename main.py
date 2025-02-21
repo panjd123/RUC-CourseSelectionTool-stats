@@ -42,7 +42,7 @@ class Report(BaseModel):
 async def report_success(count: int, uuid: str | None = None, request: Request = None):
     if uuid is None:
         uuid = "Unknown"
-    elif uuid == r"{UUID}" or uuid.empty:
+    elif uuid == r"{UUID}" or len(uuid) == 0:
         raise HTTPException(status_code=400, detail="Invalid UUID")
     timestamp = request.headers.get("X-Timestamp", datetime.now().isoformat())
     conn = sqlite3.connect(DB_FILE)
@@ -60,7 +60,7 @@ async def report_success(count: int, uuid: str | None = None, request: Request =
 async def report_request(count: int, uuid: str | None = None, request: Request = None):
     if uuid is None:
         uuid = "Unknown"
-    elif uuid == r"{UUID}" or uuid.empty:
+    elif uuid == r"{UUID}" or len(uuid) == 0:
         raise HTTPException(status_code=400, detail="Invalid UUID")
     timestamp = request.headers.get("X-Timestamp", datetime.now().isoformat())
     conn = sqlite3.connect(DB_FILE)
