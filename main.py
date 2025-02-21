@@ -40,6 +40,8 @@ class Report(BaseModel):
 
 @app.get("/success_report")
 async def report_success(count: int, uuid: str | None = None, request: Request = None):
+    if uuid == r"{UUID}":
+        raise HTTPException(status_code=400, detail="Invalid UUID")
     if not uuid:
         uuid = "Unknown"
     timestamp = request.headers.get("X-Timestamp", datetime.now().isoformat())
@@ -56,6 +58,8 @@ async def report_success(count: int, uuid: str | None = None, request: Request =
 
 @app.get("/request_report")
 async def report_request(count: int, uuid: str | None = None, request: Request = None):
+    if uuid == r"{UUID}":
+        raise HTTPException(status_code=400, detail="Invalid UUID")
     if not uuid:
         uuid = "Unknown"
     timestamp = request.headers.get("X-Timestamp", datetime.now().isoformat())
