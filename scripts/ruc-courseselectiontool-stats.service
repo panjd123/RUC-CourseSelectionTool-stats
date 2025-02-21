@@ -1,0 +1,12 @@
+[Unit]
+Description = RUC-CourseSelectionTool-Stats
+After = network.target
+Wants = network.target
+
+[Service]
+Type = simple
+WorkingDirectory = ~/RUC-CourseSelectionTool-Stats
+ExecStart = venv/bin/python3 main.py
+
+[Install]
+WantedBy = multi-user.target

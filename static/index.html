@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>抢课统计</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="icon" href="/static/favicon.ico">
+    <style>
+        #chart {
+            width: 100%;
+            height: 400px;
+            margin: 0 auto;
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #3498db, #2ecc71);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            width: 45%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .stat-card p {
+            margin: 5px 0 0;
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- 居中 -->
+        <h1 style="text-align: center;">RUC-CourseSelectionTool-stats</h1>
+        <div class="stats-container">
+            <div class="stat-card" id="total-requests">
+                <h2>总请求数</h2>
+                <p id="total-requests-value">0</p>
+            </div>
+            <div class="stat-card" id="total-success">
+                <h2>总成功数</h2>
+                <p id="total-success-value">0</p>
+            </div>
+        </div>
+        <div class="controls">
+            <label for="interval">时间粒度: </label>
+            <select id="interval" onchange="updateChart()">
+                <!-- <option value="10m">10分钟</option> -->
+                <option value="1h">1小时</option>
+                <option value="1d">1天</option>
+            </select>
+            <button onclick="resetZoom()" style="margin-left: 10px;">重置视图</button>
+        </div>
+        <div id="chart"></div>
+    </div>
+
+    <script>
+        let chart;
+        let fullData = [];
+        const WINDOW_DAYS = 30; // 固定 30 天窗口
+        const HALF_WINDOW_MS = (WINDOW_DAYS / 2) * 24 * 60 * 60 * 1000; // 15 天
+
+        async function fetchData(interval) {
+            try {
+                const response = await fetch(`/stats?interval=${interval}`);
+                const data = await response.json();
+                console.log("Fetched data:", data.data);
+                return data.data;
+            } catch (error) {
+                console.error("Fetch error:", error);
+                return [];
+            }
+        }
+
+        function updateTotalStats(data) {
+            const totalRequests = data.reduce((sum, d) => sum + d.requests, 0);
+            const totalSuccess = data.reduce((sum, d) => sum + d.success, 0);
+            document.getElementById("total-requests-value").textContent = totalRequests;
+            document.getElementById("total-success-value").textContent = totalSuccess;
+        }
+
+        async function updateChart() {
+            const interval = document.getElementById("interval").value;
+            fullData = await fetchData(interval);
+
+            if (!fullData || fullData.length === 0) {
+                console.warn("No data to display for interval:", interval);
+                return;
+            }
+
+            updateTotalStats(fullData);
+            renderChart();
+        }
+
+        function renderChart() {
+            if (chart) chart.dispose();
+            chart = echarts.init(document.getElementById("chart"));
+
+            const dates = fullData.map(d => new Date(d.time).getTime());
+            const minTime = Math.min(...dates);
+            const maxTime = Math.max(...dates);
+            const initialCenter = maxTime - HALF_WINDOW_MS; // 初始中心
+
+            const option = {
+                title: { text: "" },
+                tooltip: {
+                    trigger: "axis",
+                    formatter: (params) => {
+                        const date = new Date(params[0].axisValue);
+                        return `${date.toLocaleString()}<br/>${params.map(p =>
+                            `${p.seriesName}: ${p.value}`).join("<br/>")}`;
+                    }
+                },
+                legend: { top: "10px" },
+                xAxis: {
+                    type: "time",
+                    name: "时间",
+                    min: minTime,
+                    max: maxTime,
+                    axisLabel: {
+                        formatter: (value) => {
+                            const date = new Date(value);
+                            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                        },
+                        rotate: 45
+                    }
+                },
+                yAxis: {
+                    type: "value",
+                    name: "数量"
+                },
+                series: [
+                    {
+                        name: "成功抢课数",
+                        type: "line",
+                        data: fullData.map(d => [d.time, d.success]),
+                        itemStyle: { color: "#2ecc71" },
+                        lineStyle: { width: 2 }
+                    },
+                    {
+                        name: "请求数",
+                        type: "line",
+                        data: fullData.map(d => [d.time, d.requests]),
+                        itemStyle: { color: "#3498db" },
+                        lineStyle: { width: 2 }
+                    }
+                ],
+                dataZoom: [
+                    {
+                        type: "slider",
+                        xAxisIndex: 0,
+                        startValue: initialCenter - HALF_WINDOW_MS,
+                        endValue: initialCenter + HALF_WINDOW_MS,
+                        handleSize: "80%",
+                        moveHandleSize: 10,
+                        zoomLock: true,
+                        showDataShadow: true // 显示数据阴影
+                    }
+                ],
+                grid: { left: "60px", right: "20px", bottom: "80px", top: "50px" }
+            };
+
+            chart.setOption(option);
+            console.log("Chart initialized");
+        }
+
+        function resetZoom() {
+            if (chart) {
+                const maxTime = Math.max(...fullData.map(d => new Date(d.time).getTime()));
+                chart.setOption({
+                    dataZoom: [{
+                        startValue: maxTime - WINDOW_DAYS * 24 * 60 * 60 * 1000,
+                        endValue: maxTime
+                    }]
+                });
+                console.log("Zoom reset");
+            }
+        }
+
+        window.onload = updateChart;
+    </script>
+</body>
+
+</html>
