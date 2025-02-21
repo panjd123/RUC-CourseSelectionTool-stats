@@ -40,10 +40,10 @@ class Report(BaseModel):
 
 @app.get("/success_report")
 async def report_success(count: int, uuid: str | None = None, request: Request = None):
-    if uuid == r"{UUID}":
-        raise HTTPException(status_code=400, detail="Invalid UUID")
-    if not uuid:
+    if uuid is None:
         uuid = "Unknown"
+    elif uuid == r"{UUID}" or uuid.empty:
+        raise HTTPException(status_code=400, detail="Invalid UUID")
     timestamp = request.headers.get("X-Timestamp", datetime.now().isoformat())
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -58,10 +58,10 @@ async def report_success(count: int, uuid: str | None = None, request: Request =
 
 @app.get("/request_report")
 async def report_request(count: int, uuid: str | None = None, request: Request = None):
-    if uuid == r"{UUID}":
-        raise HTTPException(status_code=400, detail="Invalid UUID")
-    if not uuid:
+    if uuid is None:
         uuid = "Unknown"
+    elif uuid == r"{UUID}" or uuid.empty:
+        raise HTTPException(status_code=400, detail="Invalid UUID")
     timestamp = request.headers.get("X-Timestamp", datetime.now().isoformat())
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
