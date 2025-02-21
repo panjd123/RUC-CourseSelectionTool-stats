@@ -5,7 +5,7 @@ Wants = network.target
 
 [Service]
 Type = simple
-WorkingDirectory = ~/RUC-CourseSelectionTool-stats
+WorkingDirectory = /root/RUC-CourseSelectionTool-stats
 ExecStart = venv/bin/python3 main.py
 
 [Install]
