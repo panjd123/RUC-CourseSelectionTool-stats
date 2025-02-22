@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>管理员界面</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        th:nth-child(1),
+        td:nth-child(1) {
+            width: 10%;
+        }
+
+        th:nth-child(2),
+        td:nth-child(2) {
+            width: 25%;
+        }
+
+        th:nth-child(3),
+        td:nth-child(3) {
+            width: 15%;
+        }
+
+        th:nth-child(4),
+        td:nth-child(4) {
+            width: 15%;
+        }
+
+        th:nth-child(5),
+        td:nth-child(5) {
+            width: 35%;
+        }
+
+        dialog {
+            width: 400px;
+            padding: 30px;
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            background-color: #fff;
+        }
+
+        dialog h2 {
+            margin: 0 0 20px 0;
+            font-size: 24px;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        dialog input {
+            display: block;
+            width: 100%;
+            margin: 15px 0;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        dialog input:focus {
+            border-color: #3498db;
+            outline: none;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+
+        dialog button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            background-color: #3498db;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        dialog button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>管理员界面</h1>
+        <div class="controls">
+            <a href="/admin/download_db" download>
+                <button id="downloadBtn" disabled>下载数据库</button>
+            </a>
+            <label for="timeRange" style="margin-left: 20px;">时间范围: </label>
+            <select id="timeRange" onchange="fetchData()" disabled>
+                <option value="1d">1天内</option>
+                <option value="7d" selected>7天内</option>
+                <option value="30d">1个月内</option>
+                <option value="all">所有</option>
+            </select>
+        </div>
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>UUID</th>
+                    <th>成功数</th>
+                    <th>请求数</th>
+                    <th>时间戳</th>
+                </tr>
+            </thead>
+            <tbody id="dataBody"></tbody>
+        </table>
+    </div>
+
+    <dialog id="loginDialog">
+        <form id="loginForm" onsubmit="event.preventDefault(); login();">
+            <h2>管理员登录</h2>
+            <input type="text" id="username" placeholder="用户名" autocomplete="off">
+            <input type="password" id="password" placeholder="密码">
+            <button type="submit">登录</button>
+        </form>
+    </dialog>
+
+    <script>
+        // 检查会话状态
+        async function checkSession() {
+            try {
+                const response = await fetch("/admin/check_session");
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === "valid") {
+                        enableControls();
+                        fetchData();
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.error("Session check failed:", error);
+            }
+            return false;
+        }
+
+        // 页面加载时检查会话
+        window.onload = async function () {
+            const isAuthenticated = await checkSession();
+            if (!isAuthenticated) {
+                document.getElementById("loginDialog").showModal();
+            }
+        };
+
+        // 登录
+        async function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            try {
+                const response = await fetch("/admin/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+                if (!response.ok) throw new Error("Invalid credentials");
+                document.getElementById("loginDialog").close();
+                enableControls();
+                fetchData();
+            } catch (error) {
+                console.error("Login error:", error);
+                alert("用户名或密码错误");
+            }
+        }
+
+        // 启用控件
+        function enableControls() {
+            document.getElementById("downloadBtn").disabled = false;
+            document.getElementById("timeRange").disabled = false;
+
+            const downloadLink = document.querySelector('a[href="/admin/download_db"]');
+            downloadLink.onclick = function (e) {
+                e.preventDefault();
+                fetch("/admin/download_db")
+                    .then(response => {
+                        if (!response.ok) throw new Error("Unauthorized");
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "db.sqlite";
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                    })
+                    .catch(() => alert("下载失败，请重新登录"));
+            };
+        }
+
+        // 获取数据
+        async function fetchData() {
+            const timeRange = document.getElementById("timeRange").value;
+            try {
+                const response = await fetch(`/admin/data?time_range=${timeRange}`);
+                if (!response.ok) throw new Error("Unauthorized or error");
+                const data = await response.json();
+                updateTable(data.data);
+            } catch (error) {
+                console.error("Fetch error:", error);
+                alert("获取数据失败，请重新登录");
+            }
+        }
+
+        // 更新表格
+        function updateTable(data) {
+            const tbody = document.getElementById("dataBody");
+            tbody.innerHTML = "";
+            data.forEach(row => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${row.id}</td>
+                    <td>${row.uuid}</td>
+                    <td>${row.success_count}</td>
+                    <td>${row.request_count}</td>
+                    <td>${row.timestamp}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+
+</html>
