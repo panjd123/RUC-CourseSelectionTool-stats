@@ -64,6 +64,14 @@ def verify_session(session_id: str = Cookie(None)):
     return session["username"]
 
 
+@app.get("/script_control")
+async def script_control():
+    return {
+        "message": "使用前建议从 https://ruccourse.panjd.net 查看脚本最近被使用的情况，你可以参考这些信息来决定是否使用脚本。",
+        "block": False,
+    }
+
+
 @app.get("/success_report")
 async def report_success(count: int, uuid: str | None = None, request: Request = None):
     if uuid is None:
