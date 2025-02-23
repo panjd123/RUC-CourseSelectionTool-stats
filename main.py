@@ -109,20 +109,58 @@ async def report_request(count: int, uuid: str | None = None, request: Request =
 
 
 @app.get("/request_sum")
-async def get_request_sum():
+async def get_request_sum(time_range: str = "all"):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT SUM(request_count) FROM stats")
+    if time_range == "all":
+        c.execute("SELECT SUM(request_count) FROM stats")
+    else:
+        now = datetime.now()
+        if time_range == "1d":
+            start_time = now - timedelta(days=1)
+        elif time_range == "7d":
+            start_time = now - timedelta(days=7)
+        elif time_range == "30d":
+            start_time = now - timedelta(days=30)
+        elif time_range == "90d":
+            start_time = now - timedelta(days=90)
+        elif time_range == "365d":
+            start_time = now - timedelta(days=365)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid time range")
+        c.execute(
+            "SELECT SUM(request_count) FROM stats WHERE timestamp >= ?",
+            (start_time.isoformat(),),
+        )
     row = c.fetchone()
     conn.close()
     return {"request_sum": row[0] or 0}
 
 
 @app.get("/success_sum")
-async def get_success_sum():
+async def get_success_sum(time_range: str = "all"):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT SUM(success_count) FROM stats")
+    if time_range == "all":
+        c.execute("SELECT SUM(success_count) FROM stats")
+    else:
+        now = datetime.now()
+        if time_range == "1d":
+            start_time = now - timedelta(days=1)
+        elif time_range == "7d":
+            start_time = now - timedelta(days=7)
+        elif time_range == "30d":
+            start_time = now - timedelta(days=30)
+        elif time_range == "90d":
+            start_time = now - timedelta(days=90)
+        elif time_range == "365d":
+            start_time = now - timedelta(days=365)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid time range")
+        c.execute(
+            "SELECT SUM(success_count) FROM stats WHERE timestamp >= ?",
+            (start_time.isoformat(),),
+        )
     row = c.fetchone()
     conn.close()
     return {"success_sum": row[0] or 0}
