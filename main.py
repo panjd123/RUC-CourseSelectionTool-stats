@@ -108,6 +108,26 @@ async def report_request(count: int, uuid: str | None = None, request: Request =
     return {"status": "success"}
 
 
+@app.get("/request_sum")
+async def get_request_sum():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT SUM(request_count) FROM stats")
+    row = c.fetchone()
+    conn.close()
+    return {"request_sum": row[0] or 0}
+
+
+@app.get("/success_sum")
+async def get_success_sum():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT SUM(success_count) FROM stats")
+    row = c.fetchone()
+    conn.close()
+    return {"success_sum": row[0] or 0}
+
+
 @app.get("/stats")
 async def get_stats(interval: str = "10m"):
     conn = sqlite3.connect(DB_FILE)
